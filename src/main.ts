@@ -1,6 +1,7 @@
 import { Telegraf } from "telegraf";
 import env from "./services/env.js";
 import translate from "./services/translate.js";
+import express from "express";
 
 const bot = new Telegraf(env.botToken);
 
@@ -20,7 +21,19 @@ bot.on("text", async (ctx) => {
   await ctx.reply(resultText);
 });
 
-bot.launch();
+if (process.env.DEVELOPMENT) {
+  bot.launch();
+} else {
+  const server = express();
+  const domain = process.env.WEBHOOK_DOMAIN;
+  const port = process.env.PORT || 8080;
+
+  if (!domain) {
+    throw Error("Provide WEBHOOK_DOMAIN");
+  }
+  server.use(await bot.createWebhook({ domain }));
+  server.listen(port, () => console.log(`Server listening on ${port}`));
+}
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
